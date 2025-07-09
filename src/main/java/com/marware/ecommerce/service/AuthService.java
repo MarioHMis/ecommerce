@@ -34,7 +34,7 @@ public class AuthService {
         Tenant tenant = tenantRepository.findById(request.getTenantId())
                 .orElseThrow(() -> new RuntimeException("Tenant not found"));
 
-        Role userRole = roleRepository.findByName("USER")
+        Role userRole = roleRepository.findByName("ROLE_CUSTOMER")
                 .orElseThrow(() -> new RuntimeException("Role not found"));
 
         User user = new User();
