@@ -8,9 +8,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import java.util.List;
-import static com.marware.ecommerce.security.RoleConstants.*;
 
+import java.util.List;
+
+import static com.marware.ecommerce.security.RoleConstants.*;
 
 @RestController
 @RequestMapping("/api/products")
@@ -26,11 +27,26 @@ public class ProductController {
         return ResponseEntity.ok(response);
     }
 
-
     @GetMapping("/mine")
     @PreAuthorize(HAS_ADMIN_OR_SELLER)
     public ResponseEntity<List<ProductResponse>> getMyProducts() {
         List<ProductResponse> products = productService.getProductsBySeller();
+        return ResponseEntity.ok(products);
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize(HAS_ADMIN_OR_SELLER)
+    public ResponseEntity<ProductResponse> updateProduct(
+            @PathVariable Long id,
+            @Valid @RequestBody ProductRequest request
+    ) {
+        ProductResponse updated = productService.updateProduct(id, request);
+        return ResponseEntity.ok(updated);
+    }
+
+    @GetMapping
+    public ResponseEntity<List<ProductResponse>> getPublicProducts() {
+        List<ProductResponse> products = productService.getAllProducts();
         return ResponseEntity.ok(products);
     }
 }

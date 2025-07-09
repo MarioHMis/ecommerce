@@ -22,6 +22,7 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
     private final TenantRepository tenantRepository;
+    private final AuthService authService;
 
     public ProductResponse createProduct(ProductRequest request) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -59,6 +60,45 @@ public class ProductService {
                 .orElseThrow(() -> new RuntimeException("Seller not found"));
 
         return productRepository.findAllBySeller(seller).stream()
+                .map(product -> new ProductResponse(
+                        product.getId(),
+                        product.getName(),
+                        product.getDescription(),
+                        product.getPrice(),
+                        product.getStock(),
+                        product.getImageUrl(),
+                        product.getSeller().getFullName(),
+                        product.getTenant().getName()
+                ))
+                .collect(Collectors.toList());
+    }
+
+    public ProductResponse updateProduct(Long productId, ProductRequest request) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User currentUser = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+
+        boolean isAdmin = currentUser.getRoles().stream()
+                .anyMatch(role -> role.getName().equals("ROLE_ADMIN"));
+
+        if (!isAdmin && !product.getSeller().getId().equals(currentUser.getId())) {
+            throw new RuntimeException("Unauthorized to update this product");
+        }
+
+        product.setName(request.getName());
+        product.setDescription(request.getDescription());
+        product.setPrice(request.getPrice());
+        product.setStock(request.getStock());
+
+        Product updated = productRepository.save(product);
+        return ProductResponse.fromEntity(updated);
+    }
+
+    public List<ProductResponse> getAllProducts() {
+        return productRepository.findAll().stream()
                 .map(product -> new ProductResponse(
                         product.getId(),
                         product.getName(),

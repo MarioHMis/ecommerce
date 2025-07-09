@@ -9,11 +9,11 @@ import com.marware.ecommerce.model.User;
 import com.marware.ecommerce.repository.RoleRepository;
 import com.marware.ecommerce.repository.TenantRepository;
 import com.marware.ecommerce.repository.UserRepository;
-import com.marware.ecommerce.security.JwtService;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -64,4 +64,11 @@ public class AuthService {
         String token = jwtService.generateToken(user);
         return new AuthResponse(token);
     }
+
+    public User getAuthenticatedUser() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Authenticated user not found"));
+    }
+
 }

@@ -3,6 +3,7 @@ package com.marware.ecommerce.config;
 import com.marware.ecommerce.model.Role;
 import com.marware.ecommerce.model.Tenant;
 import com.marware.ecommerce.model.User;
+import com.marware.ecommerce.repository.ProductRepository;
 import com.marware.ecommerce.repository.RoleRepository;
 import com.marware.ecommerce.repository.TenantRepository;
 import com.marware.ecommerce.repository.UserRepository;
@@ -22,46 +23,59 @@ public class DataSeeder implements CommandLineRunner {
     private final RoleRepository roleRepository;
     private final TenantRepository tenantRepository;
     private final UserRepository userRepository;
+    private final ProductRepository productRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
     public void run(String... args) {
-        // 1. Create roles if they do not exist
-        createRoleIfNotFound("ROLE_ADMIN");
-        createRoleIfNotFound("ROLE_SELLER");
-        createRoleIfNotFound("ROLE_CUSTOMER");
+        // 0. Limpieza
+        productRepository.deleteAll();
+        userRepository.deleteAll();
+        tenantRepository.deleteAll();
+        roleRepository.deleteAll();
 
-        // 2. Create a demo tenant if it does not exist
-        Tenant tenant = tenantRepository.findByName("Demo Store")
-                .orElseGet(() -> {
-                    Tenant newTenant = new Tenant();
-                    newTenant.setName("Demo Store");
-                    newTenant.setDescription("Demo tenant for testing");
-                    return tenantRepository.save(newTenant);
-                });
+        // 1. Crear roles
+        Role adminRole = createRoleIfNotFound("ROLE_ADMIN");
+        Role sellerRole = createRoleIfNotFound("ROLE_SELLER");
+        Role customerRole = createRoleIfNotFound("ROLE_CUSTOMER");
 
-        // 3. Create an admin user if it does not exist
-        if (!userRepository.existsByEmail("admin@example.com")) {
-            User admin = new User();
-            admin.setEmail("admin@example.com");
-            admin.setPassword(passwordEncoder.encode("admin123"));
-            admin.setFullName("Administrator");
-            admin.setTenant(tenant);
+        // 2. Crear tenant
+        Tenant tenant = new Tenant();
+        tenant.setName("Demo Store");
+        tenant.setDescription("Demo tenant for testing");
+        tenant = tenantRepository.save(tenant);
 
-            Set<Role> roles = new HashSet<>();
-            roleRepository.findByName("ROLE_ADMIN").ifPresent(roles::add);
-            admin.setRoles(roles);
+        // 3. Crear admin
+        createUserIfNotExists("admin@example.com", "Administrator", "admin123", tenant, adminRole);
 
-            userRepository.save(admin);
-        }
+        // 4. Crear seller
+        createUserIfNotExists("seller@example.com", "Seller User", "seller123", tenant, sellerRole);
+
+        // 5. Crear customer
+        createUserIfNotExists("customer@example.com", "Customer User", "customer123", tenant, customerRole);
     }
 
-    private void createRoleIfNotFound(String roleName) {
-        Optional<Role> roleOpt = roleRepository.findByName(roleName);
-        if (roleOpt.isEmpty()) {
+    private Role createRoleIfNotFound(String roleName) {
+        return roleRepository.findByName(roleName).orElseGet(() -> {
             Role role = new Role();
             role.setName(roleName);
-            roleRepository.save(role);
+            return roleRepository.save(role);
+        });
+    }
+
+    private void createUserIfNotExists(String email, String fullName, String rawPassword, Tenant tenant, Role role) {
+        if (!userRepository.existsByEmail(email)) {
+            User user = new User();
+            user.setEmail(email);
+            user.setFullName(fullName);
+            user.setPassword(passwordEncoder.encode(rawPassword));
+            user.setTenant(tenant);
+
+            Set<Role> roles = new HashSet<>();
+            roles.add(role);
+            user.setRoles(roles);
+
+            userRepository.save(user);
         }
     }
 }

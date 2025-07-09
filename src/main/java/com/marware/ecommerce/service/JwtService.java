@@ -1,4 +1,4 @@
-package com.marware.ecommerce.security;
+package com.marware.ecommerce.service;
 
 import com.marware.ecommerce.model.User;
 import io.jsonwebtoken.Claims;
@@ -12,6 +12,8 @@ import org.springframework.stereotype.Service;
 import java.security.Key;
 import java.util.Date;
 import java.util.function.Function;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class JwtService {
@@ -19,12 +21,17 @@ public class JwtService {
     private static final String SECRET_KEY = "746F70315465637265744578616D706C654B6579546F5365637572654A574554";
 
     public String generateToken(User user) {
+        List<String> roleNames = user.getRoles()
+                .stream()
+                .map(role -> role.getName())  // Solo usamos el nombre
+                .collect(Collectors.toList());
+
         return Jwts.builder()
                 .setSubject(user.getEmail())
                 .claim("userId", user.getId())
-                .claim("roles", user.getRoles())
+                .claim("roles", roleNames) // ⬅️ Aquí está el cambio clave
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24)) // 24 hours
+                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24)) // 24 horas
                 .signWith(getSignInKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
@@ -51,7 +58,7 @@ public class JwtService {
         return extractClaim(token, Claims::getExpiration);
     }
 
-    private Claims extractAllClaims(String token) {
+    public Claims extractAllClaims(String token) {
         return Jwts
                 .parserBuilder()
                 .setSigningKey(getSignInKey())
