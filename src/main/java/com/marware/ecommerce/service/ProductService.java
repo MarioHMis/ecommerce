@@ -2,141 +2,91 @@ package com.marware.ecommerce.service;
 
 import com.marware.ecommerce.dto.ProductRequest;
 import com.marware.ecommerce.dto.ProductResponse;
+import com.marware.ecommerce.exception.ProductNotFoundException;
+import com.marware.ecommerce.exception.UnauthorizedOperationException;
 import com.marware.ecommerce.model.Product;
-import com.marware.ecommerce.model.Tenant;
 import com.marware.ecommerce.model.User;
 import com.marware.ecommerce.repository.ProductRepository;
-import com.marware.ecommerce.repository.TenantRepository;
-import com.marware.ecommerce.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class ProductService {
-
     private final ProductRepository productRepository;
-    private final UserRepository userRepository;
-    private final TenantRepository tenantRepository;
     private final AuthService authService;
     private final FileService fileService;
 
+    @Transactional
     public ProductResponse createProduct(ProductRequest request, MultipartFile image) {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        User seller = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Seller not found"));
-
-        Tenant tenant = seller.getTenant();
-
+        User seller = authService.getAuthenticatedUser();
         Product product = new Product();
         product.setName(request.getName());
         product.setDescription(request.getDescription());
         product.setPrice(request.getPrice());
         product.setStock(request.getStock());
-
-        // Subir imagen a S3
-        if (image != null && !image.isEmpty()) {
-            String imageUrl = fileService.uploadFile(image);
-            product.setImageUrl(imageUrl);
-        }
-
         product.setSeller(seller);
-        product.setTenant(tenant);
-
-        productRepository.save(product);
-
-        return new ProductResponse(
-                product.getId(),
-                product.getName(),
-                product.getDescription(),
-                product.getPrice(),
-                product.getStock(),
-                product.getImageUrl(),
-                seller.getFullName(),
-                tenant.getName()
-        );
+        product.setTenant(seller.getTenant());
+        if (image != null && !image.isEmpty()) {
+            product.setImageUrl(fileService.uploadFile(image));
+        }
+        return mapToProductResponse(productRepository.save(product));
     }
 
-
-    public List<ProductResponse> getProductsBySeller() {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        User seller = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Seller not found"));
-
-        return productRepository.findAllBySeller(seller).stream()
-                .map(product -> new ProductResponse(
-                        product.getId(),
-                        product.getName(),
-                        product.getDescription(),
-                        product.getPrice(),
-                        product.getStock(),
-                        product.getImageUrl(),
-                        product.getSeller().getFullName(),
-                        product.getTenant().getName()
-                ))
+    @Transactional(readOnly = true)
+    public List<ProductResponse> getAllProducts() {
+        return productRepository.findAll().stream()
+                .map(this::mapToProductResponse)
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public List<ProductResponse> getProductsBySeller() {
+        User seller = authService.getAuthenticatedUser();
+        return productRepository.findAllBySeller(seller).stream()
+                .map(this::mapToProductResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
     public ProductResponse updateProduct(Long productId, ProductRequest request) {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        User currentUser = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new RuntimeException("Product not found"));
-
-        boolean isAdmin = currentUser.getRoles().stream()
-                .anyMatch(role -> role.getName().equals("ROLE_ADMIN"));
-
-        if (!isAdmin && !product.getSeller().getId().equals(currentUser.getId())) {
-            throw new RuntimeException("Unauthorized to update this product");
-        }
-
+        Product product = getProductIfOwnerOrAdmin(productId);
         product.setName(request.getName());
         product.setDescription(request.getDescription());
         product.setPrice(request.getPrice());
         product.setStock(request.getStock());
-
-        Product updated = productRepository.save(product);
-        return ProductResponse.fromEntity(updated);
+        return mapToProductResponse(productRepository.save(product));
     }
 
-    public List<ProductResponse> getAllProducts() {
-        return productRepository.findAll().stream()
-                .map(product -> new ProductResponse(
-                        product.getId(),
-                        product.getName(),
-                        product.getDescription(),
-                        product.getPrice(),
-                        product.getStock(),
-                        product.getImageUrl(),
-                        product.getSeller().getFullName(),
-                        product.getTenant().getName()
-                ))
-                .collect(Collectors.toList());
-    }
-
+    @Transactional
     public void deleteProduct(Long productId) {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        User currentUser = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new RuntimeException("Product not found"));
-
-        boolean isAdmin = currentUser.getRoles().stream()
-                .anyMatch(role -> role.getName().equals("ROLE_ADMIN"));
-
-        if (!isAdmin && !product.getSeller().getId().equals(currentUser.getId())) {
-            throw new RuntimeException("Unauthorized to delete this product");
-        }
-
-        productRepository.delete(product);
+        productRepository.delete(getProductIfOwnerOrAdmin(productId));
     }
 
+    private Product getProductIfOwnerOrAdmin(Long productId) {
+        User currentUser = authService.getAuthenticatedUser();
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ProductNotFoundException(productId));
+        if (!product.getSeller().equals(currentUser) && !currentUser.isAdmin()) {
+            throw new UnauthorizedOperationException("No tienes permisos para modificar este producto");
+        }
+        return product;
+    }
+
+    private ProductResponse mapToProductResponse(Product product) {
+        return ProductResponse.builder()
+                .id(product.getId())
+                .name(product.getName())
+                .description(product.getDescription())
+                .price(product.getPrice())
+                .stock(product.getStock())
+                .imageUrl(product.getImageUrl())
+                .sellerName(product.getSeller().getFullName())
+                .tenantName(product.getTenant().getName())
+                .build();
+    }
 }

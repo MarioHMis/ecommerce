@@ -1,13 +1,13 @@
 package com.marware.ecommerce.dto;
 
 import com.marware.ecommerce.model.Product;
-import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 
 import java.math.BigDecimal;
 
 @Getter
-@AllArgsConstructor
+@Builder
 public class ProductResponse {
     private Long id;
     private String name;
@@ -18,17 +18,16 @@ public class ProductResponse {
     private String sellerName;
     private String tenantName;
 
-    // Static factory method to convert Product entity to ProductResponse DTO
     public static ProductResponse fromEntity(Product product) {
-        return new ProductResponse(
-                product.getId(),
-                product.getName(),
-                product.getDescription(),
-                product.getPrice(),
-                product.getStock(),
-                product.getImageUrl(),
-                product.getSeller().getFullName(),
-                product.getTenant().getName()
-        );
+        return ProductResponse.builder()
+                .id(product.getId())
+                .name(product.getName())
+                .description(product.getDescription())
+                .price(product.getPrice())
+                .stock(product.getStock())
+                .imageUrl(product.getImageUrl())
+                .sellerName(product.getSeller().getFullName())
+                .tenantName(product.getTenant().getName())
+                .build();
     }
 }

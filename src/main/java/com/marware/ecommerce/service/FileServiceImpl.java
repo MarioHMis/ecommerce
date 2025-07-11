@@ -18,45 +18,71 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class FileServiceImpl implements FileService {
 
-    @Value("${AWS_ACCESS_KEY}")
+    @Value("${aws.accessKey}")
     private String accessKey;
 
-    @Value("${AWS_SECRET_KEY}")
+    @Value("${aws.secretKey}")
     private String secretKey;
 
-    @Value("${AWS_REGION}")
+    @Value("${aws.region}")
     private String region;
 
-    @Value("${AWS_S3_BUCKET}")
+    @Value("${aws.s3.bucket}")
     private String bucketName;
 
     @Override
     public String uploadFile(MultipartFile file) {
-        try {
-            String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
+        validateFile(file);
 
-            S3Client s3Client = S3Client.builder()
-                    .region(Region.of(region))
-                    .credentialsProvider(
-                            StaticCredentialsProvider.create(
-                                    AwsBasicCredentials.create(accessKey, secretKey)
-                            )
-                    )
-                    .build();
+        String fileKey = generateFileKey(file.getOriginalFilename());
+        uploadToS3(file, fileKey);
 
+        return generatePublicUrl(fileKey);
+    }
+
+    private void validateFile(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("El archivo no puede estar vacío");
+        }
+
+        if (!file.getContentType().startsWith("image/")) {
+            throw new IllegalArgumentException("Solo se permiten archivos de imagen");
+        }
+    }
+
+    private String generateFileKey(String originalFilename) {
+        return "uploads/" + UUID.randomUUID() + "_" + originalFilename;
+    }
+
+    private void uploadToS3(MultipartFile file, String fileKey) {
+        try (S3Client s3Client = buildS3Client()) {
             PutObjectRequest putRequest = PutObjectRequest.builder()
                     .bucket(bucketName)
-                    .key(fileName)
+                    .key(fileKey)
                     .acl("public-read")
                     .contentType(file.getContentType())
                     .build();
 
-            s3Client.putObject(putRequest, RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
-
-            return "https://" + bucketName + ".s3." + region + ".amazonaws.com/" + fileName;
-
+            s3Client.putObject(putRequest,
+                    RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
         } catch (IOException e) {
-            throw new RuntimeException("Error uploading file to S3", e);
+            throw new RuntimeException("Error al cargar el archivo", e);
         }
+    }
+
+    private String generatePublicUrl(String fileKey) {
+        return String.format("https://%s.s3.%s.amazonaws.com/%s",
+                bucketName, region, fileKey);
+    }
+
+    private S3Client buildS3Client() {
+        return S3Client.builder()
+                .region(Region.of(region))
+                .credentialsProvider(
+                        StaticCredentialsProvider.create(
+                                AwsBasicCredentials.create(accessKey, secretKey)
+                        )
+                )
+                .build();
     }
 }

@@ -37,4 +37,10 @@ public class User {
             joinColumns = @JoinColumn(name = "user_id"),
             inverseJoinColumns = @JoinColumn(name = "role_id"))
     private Set<Role> roles = new HashSet<>();
+
+    public boolean isAdmin() {
+        return this.roles.stream()
+                .map(Role::getName)
+                .anyMatch("ROLE_ADMIN"::equals);
+    }
 }
