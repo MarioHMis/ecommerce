@@ -1,17 +1,22 @@
 package com.marware.ecommerce.repository;
 
 import com.marware.ecommerce.model.Product;
+import com.marware.ecommerce.model.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
-@Repository
 public interface ProductRepository extends JpaRepository<Product, Long> {
+    boolean existsByName(String name);
+
+    boolean existsByNameAndIdNot(String name, Long id);
+
+    List<Product> findAllBySeller(User seller);
 
     @Query("SELECT p FROM Product p WHERE " +
             "(:search IS NULL OR " +
@@ -19,5 +24,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             "LOWER(p.description) LIKE LOWER(CONCAT('%', :search, '%')))")
     Page<Product> searchProducts(@Param("search") String search, Pageable pageable);
 
-    List<Product> findAllBySellerId(Long sellerId);
+    @Query("SELECT p FROM Product p WHERE p.tenant.id = :tenantId")
+    Page<Product> findAllByTenant(Long tenantId, Pageable pageable);
 }
