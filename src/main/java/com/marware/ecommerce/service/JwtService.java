@@ -6,32 +6,35 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import java.security.Key;
 import java.util.Date;
-import java.util.function.Function;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.function.Function;
 
 @Service
 public class JwtService {
 
-    private static final String SECRET_KEY = "746F70315465637265744578616D706C654B6579546F5365637572654A574554";
+    @Value("${jwt.secret.key}")
+    private String secretKey;
+
+    @Value("${jwt.expiration.ms}")
+    private Long expirationMs;
 
     public String generateToken(User user) {
-        List<String> roleNames = user.getRoles()
-                .stream()
-                .map(role -> role.getName())  // Solo usamos el nombre
-                .collect(Collectors.toList());
+        List<String> roles = user.getRoles().stream()
+                .map(role -> role.getName())
+                .toList();
 
         return Jwts.builder()
                 .setSubject(user.getEmail())
                 .claim("userId", user.getId())
-                .claim("roles", roleNames) // ⬅️ Aquí está el cambio clave
+                .claim("roles", roles)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24)) // 24 horas
+                .setExpiration(new Date(System.currentTimeMillis() + expirationMs))
                 .signWith(getSignInKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
@@ -68,7 +71,7 @@ public class JwtService {
     }
 
     private Key getSignInKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(SECRET_KEY);
+        byte[] keyBytes = Decoders.BASE64.decode(secretKey);
         return Keys.hmacShaKeyFor(keyBytes);
     }
 }
