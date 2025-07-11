@@ -12,6 +12,7 @@ import java.util.Set;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class User {
 
     @Id
@@ -40,7 +41,6 @@ public class User {
 
     public boolean isAdmin() {
         return this.roles.stream()
-                .map(Role::getName)
-                .anyMatch("ROLE_ADMIN"::equals);
+                .anyMatch(role -> role.getName().equals("ROLE_ADMIN"));
     }
 }
