@@ -11,6 +11,7 @@ import com.marware.ecommerce.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -23,8 +24,9 @@ public class ProductService {
     private final UserRepository userRepository;
     private final TenantRepository tenantRepository;
     private final AuthService authService;
+    private final FileService fileService;
 
-    public ProductResponse createProduct(ProductRequest request) {
+    public ProductResponse createProduct(ProductRequest request, MultipartFile image) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User seller = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Seller not found"));
@@ -36,7 +38,13 @@ public class ProductService {
         product.setDescription(request.getDescription());
         product.setPrice(request.getPrice());
         product.setStock(request.getStock());
-        product.setImageUrl(request.getImageUrl());
+
+        // Subir imagen a S3
+        if (image != null && !image.isEmpty()) {
+            String imageUrl = fileService.uploadFile(image);
+            product.setImageUrl(imageUrl);
+        }
+
         product.setSeller(seller);
         product.setTenant(tenant);
 
@@ -53,6 +61,7 @@ public class ProductService {
                 tenant.getName()
         );
     }
+
 
     public List<ProductResponse> getProductsBySeller() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -111,4 +120,23 @@ public class ProductService {
                 ))
                 .collect(Collectors.toList());
     }
+
+    public void deleteProduct(Long productId) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User currentUser = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+
+        boolean isAdmin = currentUser.getRoles().stream()
+                .anyMatch(role -> role.getName().equals("ROLE_ADMIN"));
+
+        if (!isAdmin && !product.getSeller().getId().equals(currentUser.getId())) {
+            throw new RuntimeException("Unauthorized to delete this product");
+        }
+
+        productRepository.delete(product);
+    }
+
 }
