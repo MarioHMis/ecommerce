@@ -12,8 +12,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
-import static com.marware.ecommerce.security.RoleConstants.*;
-
 @RestController
 @RequestMapping("/api/products")
 @RequiredArgsConstructor
@@ -22,40 +20,34 @@ public class ProductController {
     private final ProductService productService;
 
     @PostMapping(consumes = {"multipart/form-data"})
-    @PreAuthorize(HAS_ADMIN_OR_SELLER)
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SELLER')")
     public ResponseEntity<ProductResponse> createProduct(
             @RequestPart("product") @Valid ProductRequest request,
-            @RequestPart(value = "image", required = false) MultipartFile image
-    ) {
-        ProductResponse response = productService.createProduct(request, image);
-        return ResponseEntity.ok(response);
+            @RequestPart(value = "image", required = false) MultipartFile image) {
+        return ResponseEntity.ok(productService.createProduct(request, image));
     }
 
     @GetMapping("/mine")
-    @PreAuthorize(HAS_ADMIN_OR_SELLER)
-    public ResponseEntity<List<ProductResponse>> getMyProducts() {
-        List<ProductResponse> products = productService.getProductsBySeller();
-        return ResponseEntity.ok(products);
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SELLER')")
+    public ResponseEntity<List<ProductResponse>> getSellerProducts() {
+        return ResponseEntity.ok(productService.getProductsBySeller());
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize(HAS_ADMIN_OR_SELLER)
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SELLER')")
     public ResponseEntity<ProductResponse> updateProduct(
             @PathVariable Long id,
-            @Valid @RequestBody ProductRequest request
-    ) {
-        ProductResponse updated = productService.updateProduct(id, request);
-        return ResponseEntity.ok(updated);
+            @Valid @RequestBody ProductRequest request) {
+        return ResponseEntity.ok(productService.updateProduct(id, request));
     }
 
     @GetMapping
-    public ResponseEntity<List<ProductResponse>> getPublicProducts() {
-        List<ProductResponse> products = productService.getAllProducts();
-        return ResponseEntity.ok(products);
+    public ResponseEntity<List<ProductResponse>> getAllProducts() {
+        return ResponseEntity.ok(productService.getAllProducts());
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize(HAS_ADMIN_OR_SELLER)
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SELLER')")
     public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
         productService.deleteProduct(id);
         return ResponseEntity.noContent().build();

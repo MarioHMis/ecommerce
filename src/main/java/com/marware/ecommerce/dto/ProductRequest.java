@@ -1,8 +1,6 @@
 package com.marware.ecommerce.dto;
 
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -12,18 +10,18 @@ import java.math.BigDecimal;
 @Setter
 public class ProductRequest {
 
-    @NotBlank(message = "Name must not be blank")
+    @NotBlank(message = "Product name is required")
+    @Size(max = 100, message = "Name must be less than 100 characters")
     private String name;
 
+    @Size(max = 1000, message = "Description must be less than 1000 characters")
     private String description;
 
     @NotNull(message = "Price is required")
-    @Min(value = 0, message = "Price cannot be negative")
+    @DecimalMin(value = "0.01", message = "Price must be greater than 0")
     private BigDecimal price;
 
-    private String imageUrl;
-
     @NotNull(message = "Stock is required")
-    @Min(value = 0, message = "Stock cannot be negative")
+    @Min(value = 0, message = "Stock must be positive")
     private Integer stock;
 }
