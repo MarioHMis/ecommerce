@@ -21,7 +21,7 @@ public class ProductController {
 
     private final ProductService productService;
 
-    @PostMapping
+    @PostMapping(consumes = {"multipart/form-data"})
     @PreAuthorize(HAS_ADMIN_OR_SELLER)
     public ResponseEntity<ProductResponse> createProduct(
             @RequestPart("product") @Valid ProductRequest request,
@@ -30,7 +30,6 @@ public class ProductController {
         ProductResponse response = productService.createProduct(request, image);
         return ResponseEntity.ok(response);
     }
-
 
     @GetMapping("/mine")
     @PreAuthorize(HAS_ADMIN_OR_SELLER)
@@ -61,5 +60,4 @@ public class ProductController {
         productService.deleteProduct(id);
         return ResponseEntity.noContent().build();
     }
-
 }
