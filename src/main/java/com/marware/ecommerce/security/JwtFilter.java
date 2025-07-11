@@ -25,26 +25,38 @@ public class JwtFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
 
+    // Sólo ignoramos el login y el register
+    private static final List<String> PUBLIC_PATHS = List.of(
+            "/auth/login",
+            "/auth/register"
+    );
+
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain)
             throws ServletException, IOException {
 
-        final String authHeader = request.getHeader("Authorization");
-        final String token;
-        final String userEmail;
-
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+        String path = request.getRequestURI();
+        // Si es login o register, no necesitamos validar JWT
+        if (PUBLIC_PATHS.contains(path)) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        token = authHeader.substring(7);
-        userEmail = jwtService.extractUsername(token);
+        final String authHeader = request.getHeader("Authorization");
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            // No hay token → dejamos que Spring Security rechace luego con 401/403
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        String token = authHeader.substring(7);
+        String userEmail = jwtService.extractUsername(token);
 
         if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             Claims claims = jwtService.extractAllClaims(token);
+            @SuppressWarnings("unchecked")
             List<String> roles = claims.get("roles", List.class);
 
             List<SimpleGrantedAuthority> authorities = roles.stream()
@@ -53,9 +65,8 @@ public class JwtFilter extends OncePerRequestFilter {
 
             User userDetails = new User(userEmail, "", authorities);
 
-            UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                    userDetails, null, authorities
-            );
+            UsernamePasswordAuthenticationToken authToken =
+                    new UsernamePasswordAuthenticationToken(userDetails, null, authorities);
             authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
             SecurityContextHolder.getContext().setAuthentication(authToken);
