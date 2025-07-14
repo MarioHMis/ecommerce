@@ -1,16 +1,23 @@
 package com.marware.ecommerce.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.marware.ecommerce.dto.ProductRequest;
 import com.marware.ecommerce.dto.ProductResponse;
 import com.marware.ecommerce.service.ProductService;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/products")
@@ -18,13 +25,31 @@ import java.util.List;
 public class ProductController {
 
     private final ProductService productService;
+    private final ObjectMapper objectMapper;
+    private final Validator validator;
 
-    @PostMapping(consumes = {"multipart/form-data"})
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ProductResponse> createProduct(
-            @RequestPart("product") ProductRequest request,
+            @RequestPart("product") String productJson,
             @RequestPart(value = "image", required = false) MultipartFile image) {
-        return ResponseEntity.ok(productService.createProduct(request, image));
+
+        try {
+            ProductRequest request = objectMapper.readValue(productJson, ProductRequest.class);
+            Set<ConstraintViolation<ProductRequest>> violations = validator.validate(request);
+            if (!violations.isEmpty()) {
+                throw new ConstraintViolationException(violations);
+            }
+
+            return ResponseEntity
+                    .status(HttpStatus.CREATED)
+                    .body(productService.createProduct(request, image));
+        } catch (ConstraintViolationException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException("Invalid product JSON", e);
+        }
     }
+
 
     @GetMapping("/search")
     public ResponseEntity<Page<ProductResponse>> searchProducts(

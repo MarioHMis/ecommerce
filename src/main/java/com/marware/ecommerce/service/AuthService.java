@@ -45,7 +45,7 @@ public class AuthService {
                 .roles(Collections.singleton(userRole))
                 .build();
 
-        userRepository.save(user);
+        user = userRepository.save(user);
         return new AuthResponse(jwtService.generateToken(user));
     }
 

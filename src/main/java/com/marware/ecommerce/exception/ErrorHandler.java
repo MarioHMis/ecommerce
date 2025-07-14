@@ -1,5 +1,6 @@
 package com.marware.ecommerce.exception;
 
+import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -59,4 +60,43 @@ public class ErrorHandler {
             default -> HttpStatus.INTERNAL_SERVER_ERROR;
         };
     }
+
+    @ExceptionHandler(FileProcessingException.class)
+    public ResponseEntity<ErrorResponse> handleFileProcessing(FileProcessingException ex, WebRequest req) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ErrorResponse.fromApiException(ex, HttpStatus.BAD_REQUEST, req.getDescription(false)));
+    }
+
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<ErrorResponse> handleRuntime(RuntimeException ex, WebRequest req) {
+        // opcional: inspeccionar mensaje y mapear mejor
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ErrorResponse.builder()
+                        .errorCode("INTERNAL_ERROR")
+                        .message(ex.getMessage())
+                        .status(500)
+                        .timestamp(LocalDateTime.now())
+                        .path(req.getDescription(false))
+                        .build());
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ErrorResponse> handleConstraintViolation(ConstraintViolationException ex, WebRequest request) {
+        List<String> errors = ex.getConstraintViolations()
+                .stream()
+                .map(v -> v.getPropertyPath() + ": " + v.getMessage())
+                .collect(Collectors.toList());
+
+        ValidationException validationEx = new ValidationException(
+                "VALIDATION_FAILED",
+                "Validation error on submitted data",
+                errors
+        );
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ErrorResponse.fromApiException(validationEx, HttpStatus.BAD_REQUEST, request.getDescription(false)));
+    }
+
+
+
 }

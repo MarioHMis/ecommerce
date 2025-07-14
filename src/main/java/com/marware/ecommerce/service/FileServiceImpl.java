@@ -59,7 +59,6 @@ public class FileServiceImpl implements FileService {
             PutObjectRequest putRequest = PutObjectRequest.builder()
                     .bucket(bucketName)
                     .key(fileKey)
-                    .acl("public-read")
                     .contentType(file.getContentType())
                     .build();
 
