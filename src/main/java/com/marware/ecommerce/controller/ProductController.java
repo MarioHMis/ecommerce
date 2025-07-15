@@ -72,4 +72,18 @@ public class ProductController {
     public ResponseEntity<List<ProductResponse>> getProductsBySeller() {
         return ResponseEntity.ok(productService.getProductsBySeller());
     }
+
+    @DeleteMapping("/{productId}")
+    public ResponseEntity<Void> deleteProduct(@PathVariable Long productId) {
+        productService.deleteProduct(productId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping(value = "/{productId}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ProductResponse> updateProductImage(
+            @PathVariable Long productId,
+            @RequestPart("image") MultipartFile image) {
+        return ResponseEntity.ok(productService.updateProductImage(productId, image));
+    }
+
 }

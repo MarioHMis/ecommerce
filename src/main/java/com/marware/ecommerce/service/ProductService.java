@@ -177,6 +177,20 @@ public class ProductService {
         return null;
     }
 
+    @Transactional
+    public ProductResponse updateProductImage(Long productId, MultipartFile image) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new EntityNotFoundException("Producto", productId));
+
+        validateProductOwnership(product);
+
+        String newImageUrl = uploadImage(image);
+        product.setImageUrl(newImageUrl);
+
+        return mapToProductResponse(productRepository.save(product));
+    }
+
+
     private ProductResponse mapToProductResponse(Product product) {
         return ProductResponse.builder()
                 .id(product.getId())
