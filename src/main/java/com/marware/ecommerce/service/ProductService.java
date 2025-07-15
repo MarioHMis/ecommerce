@@ -190,6 +190,28 @@ public class ProductService {
         return mapToProductResponse(productRepository.save(product));
     }
 
+    @Transactional
+    public ProductResponse updateProductWithImage(Long productId, ProductRequest request, MultipartFile image) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new EntityNotFoundException("Producto", productId));
+
+        validateProductOwnership(product);
+        validateProductName(request.getName(), productId);
+
+        product.setName(request.getName());
+        product.setDescription(request.getDescription());
+        product.setPrice(request.getPrice());
+        product.setStock(request.getStock());
+
+        if (image != null && !image.isEmpty()) {
+            String newImageUrl = uploadImage(image);
+            product.setImageUrl(newImageUrl);
+        }
+
+        return mapToProductResponse(productRepository.save(product));
+    }
+
+
 
     private ProductResponse mapToProductResponse(Product product) {
         return ProductResponse.builder()

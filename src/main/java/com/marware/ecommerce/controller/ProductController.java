@@ -86,4 +86,25 @@ public class ProductController {
         return ResponseEntity.ok(productService.updateProductImage(productId, image));
     }
 
+    @PutMapping(value = "/{productId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ProductResponse> updateProductWithImage(
+            @PathVariable Long productId,
+            @RequestPart("product") String productJson,
+            @RequestPart(value = "image", required = false) MultipartFile image) {
+        try {
+            ProductRequest request = objectMapper.readValue(productJson, ProductRequest.class);
+            Set<ConstraintViolation<ProductRequest>> violations = validator.validate(request);
+            if (!violations.isEmpty()) {
+                throw new ConstraintViolationException(violations);
+            }
+
+            return ResponseEntity.ok(productService.updateProductWithImage(productId, request, image));
+        } catch (ConstraintViolationException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException("Invalid product JSON", e);
+        }
+    }
+
+
 }
