@@ -211,6 +211,12 @@ public class ProductService {
         return mapToProductResponse(productRepository.save(product));
     }
 
+    @Transactional(readOnly = true)
+    public Page<ProductResponse> getPublicProducts(String query, Pageable pageable) {
+        return productRepository.searchPublicProducts(query, pageable)
+                .map(this::mapToProductResponse);
+    }
+
 
 
     private ProductResponse mapToProductResponse(Product product) {
@@ -225,4 +231,19 @@ public class ProductService {
                 .tenantName(product.getTenant().getName())
                 .build();
     }
+
+    @Transactional(readOnly = true)
+    public List<ProductResponse> getPublicProducts() {
+        return productRepository.findAllWithStockAvailable()
+                .stream()
+                .map(this::mapToProductResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ProductResponse> getPublicProducts(Pageable pageable) {
+        return productRepository.findAllWithStockAvailable(pageable)
+                .map(this::mapToProductResponse);
+    }
+
 }

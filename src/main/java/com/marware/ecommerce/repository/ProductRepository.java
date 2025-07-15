@@ -26,4 +26,16 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     @Query("SELECT p FROM Product p WHERE p.tenant.id = :tenantId")
     Page<Product> findAllByTenant(Long tenantId, Pageable pageable);
+
+    @Query("SELECT p FROM Product p WHERE p.stock > 0 AND (" +
+            ":search IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%')) " +
+            "OR LOWER(p.description) LIKE LOWER(CONCAT('%', :search, '%')))")
+    Page<Product> searchPublicProducts(@Param("search") String search, Pageable pageable);
+
+    @Query("SELECT p FROM Product p WHERE p.stock > 0")
+    List<Product> findAllWithStockAvailable();
+
+    @Query("SELECT p FROM Product p WHERE p.stock > 0")
+    Page<Product> findAllWithStockAvailable(Pageable pageable);
+
 }

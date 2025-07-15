@@ -28,11 +28,10 @@ public class DataSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        // 0. Limpieza
-        productRepository.deleteAll();
-        userRepository.deleteAll();
-        tenantRepository.deleteAll();
-        roleRepository.deleteAll();
+        if (roleRepository.count() > 0 || tenantRepository.count() > 0 || userRepository.count() > 0) {
+            System.out.println("🟡 Seeding skipped: ya existen datos iniciales.");
+            return;
+        }
 
         // 1. Crear roles
         Role adminRole = createRoleIfNotFound("ROLE_ADMIN");
@@ -53,7 +52,10 @@ public class DataSeeder implements CommandLineRunner {
 
         // 5. Crear customer
         createUserIfNotExists("customer@example.com", "Customer User", "customer123", tenant, customerRole);
+
+        System.out.println("✅ Seeding completed successfully.");
     }
+
 
     private Role createRoleIfNotFound(String roleName) {
         return roleRepository.findByName(roleName).orElseGet(() -> {
