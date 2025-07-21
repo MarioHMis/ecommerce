@@ -84,4 +84,27 @@ public class FileServiceImpl implements FileService {
                 )
                 .build();
     }
+
+    @Override
+    public void deleteFile(String fileUrl) {
+        String fileKey = extractFileKey(fileUrl);
+
+        try (S3Client s3Client = buildS3Client()) {
+            s3Client.deleteObject(builder -> builder
+                    .bucket(bucketName)
+                    .key(fileKey)
+            );
+        } catch (Exception e) {
+            throw new RuntimeException("Error al eliminar el archivo de S3", e);
+        }
+    }
+
+    private String extractFileKey(String fileUrl) {
+        int index = fileUrl.indexOf(".amazonaws.com/");
+        if (index == -1) {
+            throw new IllegalArgumentException("URL de archivo no válida: " + fileUrl);
+        }
+        return fileUrl.substring(index + ".amazonaws.com/".length());
+    }
+
 }

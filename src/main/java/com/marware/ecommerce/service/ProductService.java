@@ -184,6 +184,10 @@ public class ProductService {
 
         validateProductOwnership(product);
 
+        if (product.getImageUrl() != null) {
+            fileService.deleteFile(product.getImageUrl());
+        }
+
         String newImageUrl = uploadImage(image);
         product.setImageUrl(newImageUrl);
 
@@ -204,6 +208,9 @@ public class ProductService {
         product.setStock(request.getStock());
 
         if (image != null && !image.isEmpty()) {
+            if (product.getImageUrl() != null) {
+                fileService.deleteFile(product.getImageUrl());
+            }
             String newImageUrl = uploadImage(image);
             product.setImageUrl(newImageUrl);
         }
