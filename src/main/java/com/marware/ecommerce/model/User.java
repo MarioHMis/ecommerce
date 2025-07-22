@@ -1,5 +1,7 @@
 package com.marware.ecommerce.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -13,7 +15,7 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class User {
+public class User extends Auditable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -25,7 +27,6 @@ public class User {
     @Column(nullable = false)
     private String password;
 
-    @Column
     private String fullName;
 
     @ManyToOne
@@ -36,11 +37,13 @@ public class User {
     @JoinTable(
             name = "user_roles",
             joinColumns = @JoinColumn(name = "user_id"),
-            inverseJoinColumns = @JoinColumn(name = "role_id"))
+            inverseJoinColumns = @JoinColumn(name = "role_id")
+    )
+    @JsonIgnore
     private Set<Role> roles = new HashSet<>();
 
     public boolean isAdmin() {
-        return this.roles.stream()
-                .anyMatch(role -> role.getName().equals("ROLE_ADMIN"));
+        return roles.stream()
+                .anyMatch(role -> "ROLE_ADMIN".equals(role.getName()));
     }
 }

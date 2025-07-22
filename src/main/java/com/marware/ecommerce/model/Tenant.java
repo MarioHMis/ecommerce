@@ -1,6 +1,7 @@
 package com.marware.ecommerce.model;
 
 import jakarta.persistence.*;
+
 import lombok.*;
 
 @Entity
@@ -9,7 +10,8 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class Tenant {
+@Builder
+public class Tenant extends Auditable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -20,4 +22,3 @@ public class Tenant {
 
     private String description;
 }
-
