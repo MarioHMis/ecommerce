@@ -1,61 +1,40 @@
 package com.marware.ecommerce.aspect;
 
 import org.aspectj.lang.ProceedingJoinPoint;
-import org.aspectj.lang.annotation.*;
-import org.slf4j.*;
+import org.aspectj.lang.annotation.Around;
+import org.aspectj.lang.annotation.Aspect;
+import org.aspectj.lang.annotation.Pointcut;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-import org.springframework.web.context.request.RequestAttributes;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
-
-import jakarta.servlet.http.HttpServletRequest;
 
 @Aspect
 @Component
 public class LoggingAspect {
 
-    private static final Logger logger = LoggerFactory.getLogger(LoggingAspect.class);
+    private static final Logger log = LoggerFactory.getLogger(LoggingAspect.class);
 
-    @Pointcut("within(@org.springframework.web.bind.annotation.RestController *)")
-    public void restControllerMethods() {}
+    // Pointcut para todos los métodos en servicios y controladores
+    @Pointcut("within(com.marware.ecommerce.service..*) || within(com.marware.ecommerce.controller..*)")
+    public void applicationLayer() {}
 
-    @Around("restControllerMethods()")
-    public Object logRequestAndResponse(ProceedingJoinPoint joinPoint) throws Throwable {
-        RequestAttributes attrs = RequestContextHolder.getRequestAttributes();
-        HttpServletRequest request = (attrs instanceof ServletRequestAttributes)
-                ? ((ServletRequestAttributes) attrs).getRequest()
-                : null;
+    @Around("applicationLayer()")
+    public Object logExecution(ProceedingJoinPoint pjp) throws Throwable {
+        String signature = pjp.getSignature().toShortString();
+        Object[] args = pjp.getArgs();
 
+        log.info("Entering {} with arguments = {}", signature, args);
         long start = System.currentTimeMillis();
 
-        if (request != null) {
-            StringBuilder params = new StringBuilder();
-            var names = request.getParameterNames();
-            while (names.hasMoreElements()) {
-                String name = names.nextElement();
-                params.append(name)
-                        .append("=")
-                        .append(request.getParameter(name))
-                        .append(" ");
-            }
-            logger.info("Incoming request: {} {} Params=[{}]",
-                    request.getMethod(),
-                    request.getRequestURI(),
-                    params.toString().trim());
-        } else {
-            logger.info("Entering {}.{}",
-                    joinPoint.getSignature().getDeclaringTypeName(),
-                    joinPoint.getSignature().getName());
+        try {
+            Object result = pjp.proceed();
+            long elapsed = System.currentTimeMillis() - start;
+            log.info("Exiting {} with result = {} ({} ms)", signature, result, elapsed);
+            return result;
+        } catch (Throwable ex) {
+            long elapsed = System.currentTimeMillis() - start;
+            log.error("Exception in {} after {} ms: {}", signature, elapsed, ex.getMessage());
+            throw ex;
         }
-
-        Object result = joinPoint.proceed();
-        long elapsed = System.currentTimeMillis() - start;
-
-        logger.info("Completed {}.{} in {} ms",
-                joinPoint.getSignature().getDeclaringTypeName(),
-                joinPoint.getSignature().getName(),
-                elapsed);
-
-        return result;
     }
 }

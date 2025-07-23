@@ -40,16 +40,14 @@ public class ProductController {
                 throw new ConstraintViolationException(violations);
             }
 
-            return ResponseEntity
-                    .status(HttpStatus.CREATED)
-                    .body(productService.createProduct(request, image));
+            ProductResponse created = productService.createProduct(request, image);
+            return ResponseEntity.status(HttpStatus.CREATED).body(created);
         } catch (ConstraintViolationException e) {
             throw e;
         } catch (Exception e) {
             throw new RuntimeException("Invalid product JSON", e);
         }
     }
-
 
     @GetMapping("/search")
     public ResponseEntity<Page<ProductResponse>> searchProducts(
@@ -83,6 +81,7 @@ public class ProductController {
     public ResponseEntity<ProductResponse> updateProductImage(
             @PathVariable Long productId,
             @RequestPart("image") MultipartFile image) {
+
         return ResponseEntity.ok(productService.updateProductImage(productId, image));
     }
 
@@ -91,20 +90,20 @@ public class ProductController {
             @PathVariable Long productId,
             @RequestPart("product") String productJson,
             @RequestPart(value = "image", required = false) MultipartFile image) {
+
         try {
             ProductRequest request = objectMapper.readValue(productJson, ProductRequest.class);
             Set<ConstraintViolation<ProductRequest>> violations = validator.validate(request);
             if (!violations.isEmpty()) {
                 throw new ConstraintViolationException(violations);
             }
-
-            return ResponseEntity.ok(productService.updateProductWithImage(productId, request, image));
+            return ResponseEntity.ok(
+                    productService.updateProductWithImage(productId, request, image)
+            );
         } catch (ConstraintViolationException e) {
             throw e;
         } catch (Exception e) {
             throw new RuntimeException("Invalid product JSON", e);
         }
     }
-
-
 }

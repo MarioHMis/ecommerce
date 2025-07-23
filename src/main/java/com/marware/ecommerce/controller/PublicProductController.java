@@ -9,16 +9,24 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/products")
+@RequestMapping("/public/products")
 @RequiredArgsConstructor
 public class PublicProductController {
 
     private final ProductService productService;
 
     @GetMapping
-    public ResponseEntity<Page<ProductResponse>> getPublicProducts(
+    public ResponseEntity<Page<ProductResponse>> listPublicProducts(
             @RequestParam(required = false) String query,
             Pageable pageable) {
-        return ResponseEntity.ok(productService.getPublicProducts(query, pageable));
+
+        Page<ProductResponse> page = productService.getPublicProducts(query, pageable);
+        return ResponseEntity.ok(page);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ProductResponse> getPublicProduct(@PathVariable Long id) {
+        ProductResponse response = productService.getPublicProductById(id);
+        return ResponseEntity.ok(response);
     }
 }
